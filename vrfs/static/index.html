@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VRFS · 视频重压缩取证台</title>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --ink:#1b1f24; --dim:#5b6572; --line:#e2e6ec;
+  --accent:#1f5fbf; --ok:#1a7f4b; --warn:#a86400; --bad:#b3261e; --idle:#6b7280;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 18px 60px}
+h1{font-size:21px;margin:0 0 4px}
+h2{font-size:16px;margin:22px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.sub{color:var(--dim);font-size:13px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:13px;color:var(--dim);margin:10px 0 4px}
+input,select,button,textarea{font:inherit}
+input[type=file],input[type=text],input[type=number],select{
+  width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row>div{flex:1;min-width:150px}
+button{background:var(--accent);color:#fff;border:0;border-radius:6px;padding:10px 18px;cursor:pointer}
+button:disabled{background:#9aa4b2;cursor:not-allowed}
+button.ghost{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+.pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;color:#fff}
+.pill.ok{background:var(--ok)} .pill.bad{background:var(--bad)}
+.pill.warn{background:var(--warn)} .pill.idle{background:var(--idle)}
+.verdict{font-size:19px;font-weight:600;margin:6px 0 2px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:#f0f2f5}
+.kv{display:flex;gap:8px;font-size:13px;margin:3px 0}
+.kv b{font-weight:600;min-width:150px;color:var(--dim);font-weight:400}
+ul.reasons{margin:6px 0 0;padding-left:18px;font-size:13px;color:#333}
+ul.reasons li{margin:4px 0}
+.banner{padding:10px 12px;border-radius:6px;margin-bottom:12px;font-size:13px;display:none}
+.banner.err{background:#fdecea;color:var(--bad);border:1px solid #f5c2bd}
+.banner.warn{background:#fff5e0;color:var(--warn);border:1px solid #f0d69a}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.small{font-size:12px;color:var(--dim)}
+hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+details{margin-top:10px}
+summary{cursor:pointer;font-size:13px;color:var(--accent)}
+
+/* ---------- 视频预览 ---------- */
+video{width:100%;max-height:340px;background:#000;border-radius:8px;display:block}
+.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:720px){.vgrid{grid-template-columns:1fr}}
+.vbox{border:1px solid var(--line);border-radius:8px;padding:8px;background:#fbfcfd}
+.vbox .hd{font-size:12px;color:var(--dim);margin-bottom:6px;display:flex;
+  justify-content:space-between;gap:6px}
+.grabs{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.grabs figure{margin:0;border:1px solid var(--line);border-radius:6px;padding:6px;background:#fff}
+.grabs img{display:block;width:220px;border-radius:4px;background:#000}
+.grabs figcaption{font-size:11px;color:var(--dim);margin-top:4px;text-align:center}
+
+/* ---------- 评分卡 ---------- */
+.score{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  border:1px solid var(--line);border-radius:10px;padding:14px;background:#fbfcfd}
+.score .num{font-size:44px;font-weight:700;line-height:1;
+  font-family:ui-monospace,Menlo,Consolas,monospace;min-width:92px;text-align:center}
+.score .num.none{font-size:20px;color:var(--dim)}
+.score .meta{flex:1;min-width:220px}
+.score .grade{font-size:16px;font-weight:600}
+.bar{height:9px;background:#eceff3;border-radius:5px;overflow:hidden;margin-top:5px}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:5px}
+.bar.lo>i{background:#c0392b} .bar.mid>i{background:#b9770e} .bar.hi>i{background:#1a7f4b}
+.sitems td{vertical-align:middle}
+.stag{font-size:11px;padding:1px 6px;border-radius:8px;border:1px solid var(--line);
+  color:var(--dim);white-space:nowrap}
+.stag.na{background:#f1f4f7} .stag.und{background:#fff5e0}
+
+/* ---------- 算法卡 ---------- */
+.algo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+@media(max-width:820px){.algo{grid-template-columns:1fr}}
+.abox{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fbfcfd}
+.abox h3{margin:0 0 2px;font-size:14px}
+.abox .sig{font-size:12px;color:var(--dim);margin-bottom:6px}
+.abox ol{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:#333}
+.abox ol li{margin:3px 0}
+.abox .why{font-size:12.5px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);color:#333}
+.fml{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;
+  background:#eef2f7;border-radius:4px;padding:1px 5px;white-space:nowrap}
+.stepn{display:inline-block;width:17px;height:17px;line-height:17px;border-radius:50%;
+  background:var(--accent);color:#fff;font-size:10px;text-align:center;margin-right:4px}
+
+/* ---------- 中间产物图 ---------- */
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+@media(max-width:820px){.charts{grid-template-columns:1fr}}
+.chart{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff}
+.chart .ct{font-size:13px;font-weight:600}
+.chart .cs{font-size:11.5px;color:var(--dim);margin:2px 0 8px}
+.chart svg{display:block;width:100%;height:auto}
+.legend{font-size:11px;color:var(--dim);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;
+  margin-right:4px;vertical-align:-1px}
+.xcheck{font-size:12.5px;margin-top:10px;border:1px solid var(--line);
+  border-radius:8px;padding:8px 10px;background:#fbfcfd}
+.xcheck table{margin-top:6px}
+.xcheck td,.xcheck th{font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>VRFS · 视频重压缩取证台</h1>
+<div class="sub">
+  系数域（DQ 梳齿）＋ 帧大小域（GOP 相位）＋ 像素域（重编码失真残差）三条证据轴，
+  带<b>适用性门控</b>与<b>证据强度评分</b>，合并出一张判决卡。
+</div>
+
+<div id="b-err" class="banner err"></div>
+<div id="b-warn" class="banner warn"></div>
+
+<!-- 用大白话说清能查什么、结论怎么读 -->
+<div class="card" id="card-plain">
+  <h2 style="margin-top:0">先说清楚：它查什么，出的结论是什么意思</h2>
+  <div class="small">
+    <b>它只回答一个问题：这段 H.264 视频有没有被压缩过两次。</b>
+    转码、重新压制、平台二次转码，都会留下第一代压缩的痕迹 —— 这就是它要找的东西。
+  </div>
+  <table style="margin-top:10px">
+    <tr><th style="width:50%">✔ 能做的</th><th>✘ 做不到的</th></tr>
+    <tr>
+      <td>
+        · 判断有没有重压缩痕迹，并给出<b>证据强度</b>（0–100，不是概率）<br>
+        · 已知两次压缩的 QP 时，先告诉你这个参数组合<b>理论上测不测得出来</b><br>
+        · 先测素材本身适不适用（门控）。不适用就直接说"不出结论"，<b>而不是硬给一个分数</b><br>
+        · 明确写出"无证据"和"证明没压过"是两件事
+      </td>
+      <td>
+        · 不告诉你是谁改的、什么时候改的、改了什么内容<br>
+        · 不是深伪 / AI 生成检测，不做人脸或画面真伪判断<br>
+        · 不判版权归属、不追来源<br>
+        · 只对 <b>H.264</b> 有效；HEVC / AV1 / VP9 的结论不可用<br>
+        · CABAC 编码的 H.264 上，系数域那条轴<b>不能用</b>，只剩帧大小轴<br>
+        · <b>"无证据"不等于"证明只压过一次"</b>
+      </td>
+    </tr>
+  </table>
+  <details style="margin-top:8px">
+    <summary><b>三种结论分别是什么意思（这句一定要读）</b></summary>
+    <div class="small" style="margin-top:6px">
+      <table>
+        <tr><th style="width:190px">结论</th><th>用大白话说</th></tr>
+        <tr><td><b>检出</b><br><span class="mono">DOUBLE_COMPRESSION_INDICATED</span></td>
+            <td>找到了重压缩的证据，分数表示证据有多强（越高越强）。
+                <b>这是"有证据"，不是"法律上的认定"</b> —— 它不排除存在我们还没建模的处理方式。</td></tr>
+        <tr><td><b>无证据</b><br><span class="mono">NO_EVIDENCE</span></td>
+            <td>三条轴都没测出东西。这<b>可能</b>是它真的只压过一次，也<b>很可能</b>是压了两次、
+                但正好落在理论上测不出来的参数组合上（两次 QP 相同、或相差 6 的倍数）。
+                要区分这两种情况，得知道两次压缩的 QP，看上方"这个操作点在理论上可检吗"。</td></tr>
+        <tr><td><b>证书不适用</b><br><span class="mono">NOT_APPLICABLE</span></td>
+            <td>这段素材不满足方法成立的前提（比如分辨率太高、单压基线本身就远离理论模型、或是 CABAC）。
+                <b>这时不给分数</b> —— 硬给一个数是没有依据的。</td></tr>
+      </table>
+    </div>
+  </details>
+  <details>
+    <summary><b>为什么"测不出来"也要单独写一种？</b></summary>
+    <div class="small" style="margin-top:6px">
+      市面上大多数检测器只给一个分数，分数低就说是"没被改过"。但这个领域的实际情况是：
+      <b>有些参数组合下，任何只看量化系数的方法都必然测不出来</b> —— 这是可以证明的，不是测不准。
+      把"测不出来"和"确实没有"混为一谈，在取证场景里会直接导致错判。
+      本工具宁可多写一种结论，也不把它们合并。
+    </div>
+  </details>
+</div>
+
+<!-- 算法：每根轴看什么、这个数怎么算出来的 -->
+<div class="card" id="card-algo">
+  <h2 style="margin-top:0">算法：三条轴各自在看什么，每个数是怎么算出来的</h2>
+  <div class="small">
+    它不是"把参数拿来比一比"。每根轴都从码流里<b>重新构造一个统计量</b>，再配一套自己的判据；
+    而 <b>r 轴是理论</b>——先算出这个操作点<b>在理论上测不测得出来</b>，再让实测去和它对照。
+    下面四块是这套方法的全部计算过程。
+  </div>
+
+  <div class="algo">
+    <div class="abox">
+      <h3>① DQ 梳齿轴 <span class="small">— 信号源：IDR 帧的 AC 量化系数</span></h3>
+      <div class="sig">输入：码流 → CAVLC 熵解码。需要 CAVLC/Baseline，CABAC 直接声明不可用。</div>
+      <ol>
+        <li>解码前 13 个 IDR 帧，取 zigzag 位置 1–15 的 AC 系数绝对值（丢掉 DC）</li>
+        <li>截到 <span class="fml">|level| ∈ 1..23</span>，归一化为直方图 <span class="fml">p(k)</span>（第 24 格是尾部聚合格，必须丢）</li>
+        <li>凸峰能量 <span class="fml">peak = Σ_k max(0, p(k) − (p(k−1)+p(k+1))/2)</span></li>
+        <li>单调违例 <span class="fml">viol = Σ_k max(0, p(k+1) − p(k))</span></li>
+        <li><span class="fml">score = peak + viol</span>，与 912 组校准出的阈值 <span class="fml">0.10</span> 比较</li>
+      </ol>
+      <div class="why">
+        <b>为什么这样能区分：</b>单压的 level 直方图光滑且单调递减。双压时第一代系数
+        <span class="fml">c</span> 落到第二代网格上要重新取整成
+        <span class="fml">round(c·Qstep₁/Qstep₂)</span>，多个不同的
+        <span class="fml">c</span> 会被吸到同一个 level 上 ⇒ 局部堆积成"梳齿"，并把单调性顶破。
+        两个统计量都<b>无参数、对整体系数缩放不变</b>，不需要训练。
+      </div>
+    </div>
+
+    <div class="abox">
+      <h3>② GOP 相位轴 <span class="small">— 信号源：每帧 NAL 字节数</span></h3>
+      <div class="sig">输入：只要字节长度，<b>不需要熵解码</b>，因此 CABAC 上照样可用。</div>
+      <ol>
+        <li>按起始码切出 VCL NAL，得帧大小序列，<b>只留 P 帧</b></li>
+        <li>取 <span class="fml">log</span>，把乘性的码率波动变成加性</li>
+        <li>减去<b>滑动中值</b>（窗 31，远大于待测周期，免得把信号一起滤掉）</li>
+        <li>按 <span class="fml">i mod GOP₂</span> 分组减组内均值 —— 陷波掉第二代自己的周期</li>
+        <li>对候选周期 <span class="fml">p ∈ [6,25]</span>（剔除与 GOP₂ 成整数倍的伪周期），
+            算 Welch <span class="fml">t</span>：相位 j 的帧 vs 其余帧，取 <span class="fml">max_j</span></li>
+        <li><b>max-T 置换</b>：把序列随机打乱 500 次，每次内部<b>同样取 max</b> ⇒ 得到 p 值</li>
+      </ol>
+      <div class="why">
+        <b>为什么这样能区分：</b>第一代在 <span class="fml">t = 0, GOP₁, 2·GOP₁ …</span> 编 I 帧；
+        第二代按 GOP₂ 重编且 GOP₂ ≠ GOP₁ 时，这些位置变成 P 帧，预测结构与邻帧不同 ⇒
+        新失真在周期 GOP₁ 上出现<b>相位偏移</b>。单压没有第一代 I 帧，该周期上就没有信号。<br>
+        <span class="small">注意：这里<b>不是</b> Bonferroni。各候选周期共用同一条序列、强正相关，
+        Bonferroni 会过度保守；max-T 的零分布由置换本身构造，已含"取最大值"这一步，
+        因此<b>不需要正态假设</b>。</span>
+      </div>
+    </div>
+
+    <div class="abox">
+      <h3>③ 适用性门控 <span class="small">— 不是检测器，是"这套方法在这儿成不成立"</span></h3>
+      <div class="sig">输入：单压参考的 level 直方图。没给参考 ⇒ 门控<b>未测</b>，判决按"适用性未知"出具。</div>
+      <ol>
+        <li>CM 锥 = <b>完全单调序列锥</b> = 混合几何分布张成的凸锥（Hausdorff 矩问题，参数无关）</li>
+        <li>取 140 条截断几何射线作基，用 <b>EM 求 I-投影</b>：
+            <span class="fml">D = min_{q∈CM} KL(p‖q)</span></li>
+        <li>在<b>单压参考</b>上测 <span class="fml">D_single</span>；
+            <span class="fml">&lt; 1.5e-3</span> 才认定证书适用</li>
+      </ol>
+      <div class="why">
+        <b>为什么要这一步：</b>理论上界只在"单压直方图贴近 CM 锥"时才成立。实测发现原生高分辨率素材
+        的<b>单压直方图本身就远离锥</b>（D 随分辨率单调上升），这时给"检出/未检出"没有依据。
+        门控把"能不能用"变成<b>可测量的量</b>，而不是按分辨率标签去猜。<br>
+        <span class="small"><b>关键：</b>门控必须测在<b>参考</b>上，不能测在待检自己身上——
+        待检若真是双压，它的 D 天然偏大，测自己就等于对每一个真阳性都拒绝出结论。</span>
+      </div>
+    </div>
+
+    <div class="abox">
+      <h3>④ r 轴 <span class="small">— 理论：先预测这个操作点测不测得出来</span></h3>
+      <div class="sig">输入：只需 QP₁ / QP₂ 两个整数。它<b>不看码流</b>，给的是可证伪的事前预测。</div>
+      <ol>
+        <li><span class="fml">Qstep(QP) = Q_base[QP mod 6] · 2^⌊QP/6⌋</span> —— QP 每 +6 步长<b>精确</b>翻倍 ⇒ 周期 6</li>
+        <li><span class="fml">r = Qstep(QP₁) / Qstep(QP₂)</span></li>
+        <li><span class="fml">r = 1</span>（两次 QP 相同）⇒ 再量化<b>幂等</b>，DQ 轴被湮灭</li>
+        <li><span class="fml">1/r</span> 恰为正整数 ⇒ 第一代网格整格落在第二代网格上，
+            同为<b>精确不可检测点</b>（<span class="fml">QP₂ = QP₁ + 6k ⇒ 1/r = 2^k</span>）</li>
+        <li><span class="fml">r &gt; 1</span>（第二代更细）⇒ 梳齿可观测；
+            <span class="fml">r &lt; 1</span>（第二代更粗）⇒ 梳齿被大面积擦除</li>
+      </ol>
+      <div class="why">
+        <b>为什么这算算法而不是堆参数：</b>它给出<b>可证伪的事前预测</b>——
+        在 <span class="fml">QP₂ = QP₁ + 6k</span> 上，任何只看 level 直方图的方法<b>必然</b>静默。
+        实验逐点验证了这个预测，于是实测到的低分才可以被解释成"理论预期"，
+        而不是被当成"漏检"。<b>没有这条理论，"无证据"就没法解释。</b>
+      </div>
+    </div>
+  </div>
+
+  <details style="margin-top:10px">
+    <summary><b>三根轴怎么合成一张判决卡（规则，不是加权平均）</b></summary>
+    <div class="small" style="margin-top:6px">
+      <table>
+        <tr><th style="width:120px">规则</th><th>内容</th></tr>
+        <tr><td>R0 门控</td><td>门控已测且不通过 ⇒ 出 <b>证书不适用</b>，<b>不给分</b></td></tr>
+        <tr><td>R1 合并</td><td>码流任一轴显著 ⇒ 检出；像素域 <b>DETECTED</b> 与码流命中互证记 high，
+            静默时记 moderate（先查 r 区制，湮灭区的静默是预期）；<b>UNDECIDABLE</b> 表示对方分辨率不足，不是矛盾</td></tr>
+        <tr><td>R2 都不显著</td><td>出 <b>无证据</b> —— 它是"没测到东西"，<b>不是"证明单压"</b></td></tr>
+        <tr><td>评分卡</td><td>0–100 是<b>证据强度</b>，不是概率也不是似然比。三条硬规矩：
+            门控关不给分；理论湮灭的操作点上 DQ 轴退出计分；引擎说"判不了"时同样退出计分</td></tr>
+      </table>
+    </div>
+  </details>
+</div>
+
+<!-- 状态 -->
+<div class="card">
+  <div class="row">
+    <div><span class="small">引擎</span><br><span id="s-ver" class="pill idle">…</span></div>
+    <div><span class="small">内置样例</span><br><span id="s-samples" class="pill idle">…</span></div>
+    <div><span class="small">像素域引擎</span><br><span id="s-rde" class="pill idle">…</span></div>
+    <div><span class="small">门控阈值 D_single</span><br><span id="s-gate" class="mono">…</span></div>
+    <div style="text-align:right"><button class="ghost" onclick="loadHealth()">重新检查</button></div>
+  </div>
+</div>
+
+<!-- r 轴交互 -->
+<div class="card">
+  <h2 style="margin-top:0">先问一句：这个操作点在理论上可检吗？</h2>
+  <div class="small">
+    双压缩的可检测性由 <span class="mono">r = Qstep(QP1)/Qstep(QP2)</span> 单点决定。
+    QP 每 +6 步长翻倍，所以 <span class="mono">QP2 = QP1 + 6k</span> 是第一代网格正好落在第二代网格上的
+    <b>周期-6 不可检测点</b>；<span class="mono">QP1 = QP2</span> 是幂等点，DQ 轴被完全湮灭。
+    在这两种点上，DQ 轴测不出东西是<b>理论预期</b>，不是"证明单压"。
+  </div>
+  <div class="row" style="margin-top:10px">
+    <div><label>第一代 QP1</label><input type="number" id="rq1" value="23" min="0" max="51"></div>
+    <div><label>第二代 QP2</label><input type="number" id="rq2" value="18" min="0" max="51"></div>
+    <div style="display:flex;align-items:flex-end"><button class="ghost" onclick="queryR()">查询区制</button></div>
+  </div>
+  <div id="r-out" style="margin-top:10px"></div>
+</div>
+
+<!-- r 轴扫描：本次新增的一键实验 -->
+<div class="card" id="card-sweep">
+  <h2 style="margin-top:0">一键实验 · r 轴扫描</h2>
+  <div class="small" id="sweep-note">载入中…</div>
+  <table id="sweep-tbl" style="display:none">
+    <tr><th>操作点</th><th>理论预测（扫描前写死）</th><th>实测 DQ 梳齿</th>
+        <th>GOP max-T p</th><th>判决</th><th></th></tr>
+  </table>
+  <details>
+    <summary>这条扫描在验证什么</summary>
+    <div class="small" style="margin-top:6px">
+      固定第一代 QP1=23，只扫第二代的 QP2。理论在扫描<b>之前</b>就给出每个操作点的区制：
+      r&gt;1 可检、r=1 幂等湮灭、1/r 为正整数是周期-6 不可检测点、r&lt;1 擦除。
+      把预测与实测并排看，比单独报一个准确率有说服力 —— 因为预测说湮灭的地方分数确实
+      塌到 1e-3 量级，这不是拟合出来的。<br><br>
+      反面同样重要：在幂等点与周期-6 点上码流域判 <b>NO_EVIDENCE</b>（无证据），
+      <b>不是</b>判"单压"。这两件事的区别在取证里是决定性的，而市面上只给一个分数的
+      检测器答不了这一问。
+    </div>
+  </details>
+</div>
+
+<!-- 素材预览：先看一眼在判什么 -->
+<div class="card" id="card-preview">
+  <h2 style="margin-top:0">素材预览</h2>
+  <div class="vgrid">
+    <div class="vbox">
+      <div class="hd"><span>待检视频</span><span class="mono" id="m-sus">—</span></div>
+      <video id="vid-sus" controls playsinline preload="metadata"></video>
+    </div>
+    <div class="vbox">
+      <div class="hd"><span>单压参考</span><span class="mono" id="m-ref">—</span></div>
+      <video id="vid-ref" controls playsinline preload="metadata"></video>
+    </div>
+  </div>
+  <div class="row" style="margin-top:10px;align-items:center">
+    <label style="margin:0;display:flex;gap:6px;align-items:center;font-size:13px">
+      <input type="checkbox" id="sync-play" style="width:auto"> 并排同步播放（拖动/暂停一起动）</label>
+    <div style="flex:1"></div>
+    <button class="ghost" style="padding:6px 12px" onclick="grab('sus')">抓待检当前帧</button>
+    <button class="ghost" style="padding:6px 12px" onclick="grab('ref')">抓参考当前帧</button>
+  </div>
+  <div class="grabs" id="grabs"></div>
+  <div class="small" id="prev-note" style="margin-top:8px">
+    在上面选好素材即可播放。<b>上传的文件只在本机浏览器里播放</b>，不先传给服务器 ——
+    按下「开始分析」才会上传，判决完即删。原始 .264/.h264 码流没有容器，浏览器放不了，
+    界面会提示，但分析照常进行。
+  </div>
+</div>
+
+<!-- 分析 -->
+<div class="card">
+  <h2 style="margin-top:0">分析</h2>
+
+  <label><input type="radio" name="src" value="upload" checked onchange="onSrc()"> 上传我的文件</label>
+  <label><input type="radio" name="src" value="sample" onchange="onSrc()"> 用服务器内置样例（不上传，秒开）</label>
+
+  <div id="box-upload">
+    <div class="row">
+      <div><label>待检视频（必填）</label><input type="file" id="f-sus" accept=".mp4,.264,.h264,.mkv,.mov"></div>
+      <div><label>单压参考（可选，但<b>强烈建议</b>：只有给了参考才能测门控）</label>
+        <input type="file" id="f-ref" accept=".mp4,.264,.h264,.mkv,.mov">
+        <div class="small">必须是<b>同一段内容</b>的第一代单压版本。选错了不会报错，
+          但门控测的就是另一段素材、像素域配对模式也会失效 —— 系统会自动识别并在结果里标出来。</div></div>
+    </div>
+  </div>
+
+  <div id="box-sample" style="display:none">
+    <div class="row">
+      <div><label>待检样例</label><select id="s-sus"></select></div>
+      <div><label>参考样例（选了才能开门控）</label><select id="s-ref"><option value="">（不选）</option></select></div>
+    </div>
+    <div class="small" id="sample-note"></div>
+    <div id="sample-info"></div>
+  </div>
+
+  <div class="row" style="margin-top:8px">
+    <div><label>QP1（第一代，若已知）</label><input type="number" id="p-qp1" min="0" max="51" placeholder="留空=未知"></div>
+    <div><label>QP2（第二代，若已知）</label><input type="number" id="p-qp2" min="0" max="51" placeholder="留空=未知"></div>
+    <div><label>第二代 GOP 长度</label><input type="number" id="p-gop2" value="15" min="2" max="300"></div>
+    <div><label>置换次数</label><input type="number" id="p-perm" value="500" min="50" max="2000"></div>
+  </div>
+  <div class="small">已知 QP1/QP2 时，系统会先预测该操作点的区制，再与实测对照 —— 预测与实测冲突本身就是一条结论。</div>
+
+  <div style="margin-top:10px">
+    <label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--ink)">
+      <input type="checkbox" id="p-rde" checked style="width:auto">
+      并入像素域第三轴（约 5–20 秒）</label>
+    <div class="small">像素域读重编码前后的失真残差，码流域读系数直方图与帧大小
+      序列，两条链路互不重叠，失效的位置也不一样（见下方扫描表的实测：同一批素材上
+      两个方向都出现过"一边静默、另一边检出"）。取消勾选则只跑码流两轴，会更快。</div>
+  </div>
+
+  <div style="margin-top:14px">
+    <button id="btn-run" onclick="run()">开始分析</button>
+    <span id="spin" class="small" style="margin-left:10px"></span>
+  </div>
+</div>
+
+<!-- 结果 -->
+<div class="card" id="card-out" style="display:none">
+  <h2 style="margin-top:0">结果</h2>
+  <div id="v-badge"></div>
+  <div class="verdict" id="v-text"></div>
+  <div class="small" id="v-meta"></div>
+  <div id="v-plain"></div>
+
+  <!-- 评分卡 -->
+  <div id="v-score" style="margin-top:12px"></div>
+
+  <hr>
+  <div id="v-gate"></div>
+  <div id="v-axes"></div>
+  <div id="v-algo"></div>
+  <div id="v-r"></div>
+  <div><b style="font-size:13px">判决依据</b><ul class="reasons" id="v-reasons"></ul></div>
+  <div style="margin-top:12px"><button class="ghost" onclick="dl()">下载 JSON</button></div>
+</div>
+
+<!-- 三轴融合 -->
+<div class="card">
+  <h2 style="margin-top:0">三轴证据如何合成一张判决卡</h2>
+  <div class="small">
+    三条轴探测的信号域互不重叠，各自独立出结论，再由融合规则合成<b>一张</b>判决卡，
+    不需要人工对照。
+  </div>
+  <table>
+    <tr><th style="width:120px"></th><th>码流域</th><th>像素域</th></tr>
+    <tr><td>看什么</td><td>系数直方图 + 帧大小序列</td><td>重编码前后的失真残差（探针族 QP 16–44）</td></tr>
+    <tr><td>需要解码</td><td>否（系数轴需 CAVLC）</td><td>是（全解码 + 探针重编码）</td></tr>
+    <tr><td>可判边界</td><td>r &gt; 1（r = Qstep 比）</td><td>r* ≈ 1.768</td></tr>
+    <tr><td>耗时</td><td>亚秒–数秒</td><td>约 5–20 秒</td></tr>
+  </table>
+  <div class="small" style="margin-top:8px">
+    <b>融合的价值：两条链的失效位置不一样</b>，而且两个方向都实测到了。
+    <ul class="reasons" style="margin-top:4px">
+      <li>周期-6 不可检测点（QP2=29）：DQ 梳齿按理论湮灭（实测 1.4e-3，落在单压带），
+          码流域单独跑只能说"无证据"；像素域在同一条素材上判 <b>DETECTED</b>（conf 0.99）。</li>
+      <li>可检区（QP2=18，r=1.80）：码流域 DQ 梳齿 0.46 干净命中，像素域却判
+          <b>UNDECIDABLE</b> —— 该操作点正落在像素域的可判边界带 [1.768, 2.103] 上。</li>
+      <li>CABAC 高分辨率素材（内置 rde_* 样例）：系数轴直接不可用，像素域判 DETECTED。</li>
+    </ul>
+    <b>由此得出的一条口径，务必按这个读</b>：<span class="mono">周期-6 不可检测点</span>
+    说的是<b>DQ 梳齿这一条轴</b>（系数域网格对齐导致梳齿湮灭），
+    <b>不是"任何方法都检不出"</b>。像素域不看系数网格，所以它不受这条约束。
+    把它写成"该操作点不可检测"而不限定轴，是对该理论最常见的误读。
+  </div>
+  <table style="margin-top:10px">
+    <tr><th>像素域结论</th><th>码流域结论</th><th>合成判决</th></tr>
+    <tr><td>DETECTED</td><td>检出</td><td>检出 · <b>high</b>（两条独立链互证）</td></tr>
+    <tr><td>DETECTED</td><td>无证据</td><td>检出 · moderate（先查 r 区制：周期-6 / 幂等点上码流域静默是<b>预期</b>，不是矛盾）</td></tr>
+    <tr><td>UNDECIDABLE / UNDERPOWERED</td><td>检出</td><td>检出 · moderate（像素域低于自身可判边界或样本量不足，不是矛盾）</td></tr>
+    <tr><td>DIAGNOSTIC（无参考）</td><td>任意</td><td>以码流域判决为准，像素域只作辅助证据（该模式非鉴定级）</td></tr>
+    <tr><td>未接入</td><td>任意</td><td>码流域单独判决，评分卡如实降低证据覆盖度</td></tr>
+  </table>
+  <div class="small" style="margin-top:8px">
+    内置样例里 <span class="mono">rde_*.mp4</span> 是像素域实验用的素材，换到码流域这一侧
+    跑一遍即可看到两条链在同一批素材上的差异。
+  </div>
+</div>
+
+<!-- 说明 -->
+<div class="card">
+  <h2 style="margin-top:0">素材要求与结果怎么读</h2>
+  <table>
+    <tr><th style="width:130px">项</th><th>要求 / 说明</th></tr>
+    <tr><td>编码</td><td><b>H.264</b>。DQ 轴需要 CAVLC（Baseline，<span class="mono">-coder cavlc</span>）；
+      CABAC 码流该轴返回 unavailable，此时只剩 GOP 轴。HEVC/AV1/VP9 结论不可信。</td></tr>
+    <tr><td>长度</td><td>DQ 轴读前 <b>13 个 IDR 帧</b>；GOP 轴需要 ≥60 个 VCL 帧。20–60 秒足够。</td></tr>
+    <tr><td>大小</td><td>建议单文件 ≤100 MB。纯码流解析，不解码像素，不吃显存。</td></tr>
+    <tr><td>参考</td><td><b>同内容、同起点、同时长</b>的单压版本。给参考 = 开门控；不给 = 门控未测，
+      判决会标注"适用性未知"。</td></tr>
+    <tr><td>三种判决</td><td><b>DOUBLE_COMPRESSION_INDICATED</b> 检出；
+      <b>NO_EVIDENCE</b> 无证据（≠ 证明单压）；
+      <b>NOT_APPLICABLE</b> 证书不适用，不给分数。</td></tr>
+  </table>
+  <details>
+    <summary>为什么要有门控（与只给分数的检测器的区别）</summary>
+    <div class="small" style="margin-top:6px">
+      理论的可检测性上界只在"单压基线贴近完全单调锥"时成立。实测发现原生高分辨率素材的
+      单压直方图本身就远离锥（D_single 随分辨率单调上升）。在那种素材上硬给一个分数是
+      没有依据的。门控把这件事变成一个<b>可测量的量</b>：先测参考的 D_single，超过阈值就
+      直接输出"证书不适用"，而不是靠分辨率标签猜。司法场景里这决定报告能不能用。
+    </div>
+  </details>
+</div>
+
+</div>
+
+<script>
+var LAST=null, SAMPLES=[];
+
+// 站点前缀。挂在 /vrfs/ 下时，写成 '/health' 会被浏览器解析成 https://host/health，
+// 落到同机另一个服务的根路径上。所有请求必须带这个前缀。
+var BASE=(function(){
+  var p=location.pathname;
+  if(!p.endsWith('/'))p=p.replace(/[^/]*$/,'');
+  return p;
+})();
+
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})}
+function showErr(m){var b=$('b-err');if(!b)return;b.textContent=m;b.style.display=m?'block':'none'}
+function showWarn(m){var b=$('b-warn');if(!b)return;b.textContent=m;b.style.display=m?'block':'none'}
+function pill(el,txt,cls){if(!el)return;el.className='pill '+(cls||'idle');el.textContent=txt}
+
+function api(u,opt){return fetch(u,opt||{}).then(function(r){
+  return r.text().then(function(t){var j=null;try{j=JSON.parse(t)}catch(e){}
+    return {status:r.status,json:j,text:t}})})}
+
+function loadHealth(){
+  return api(BASE+'health').then(function(r){
+    if(r.status!==200){pill($('s-ver'),'offline','bad');showErr('服务不可达（HTTP '+r.status+'）');return}
+    var h=r.json;pill($('s-ver'),'v'+h.version,'ok');
+    pill($('s-samples'),(h.samples_available||0)+' 个',h.samples_available?'ok':'warn');
+    $('s-gate').textContent=h.gate_threshold_D_single;
+    showErr('');
+  }).catch(function(e){pill($('s-ver'),'offline','bad');showErr('连不上服务：'+e)});
+}
+
+function loadSamples(){
+  return api(BASE+'v1/samples').then(function(r){
+    if(r.status!==200||!r.json){$('sample-note').textContent='服务器无内置样例，请用上传模式。';return}
+    SAMPLES=r.json.files||[];
+    ['s-sus','s-ref'].forEach(function(id){
+      var sel=$(id),keep=sel.value;sel.innerHTML=(id==='s-ref')?'<option value="">（不选）</option>':'';
+      SAMPLES.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o)});
+      if(keep)sel.value=keep;
+    });
+    $('sample-note').textContent=SAMPLES.length?('共 '+SAMPLES.length+' 个，无需上传。'):'';
+    ['s-sus','s-ref'].forEach(function(id){
+      var sel=$(id);sel.onchange=function(){renderSampleInfo();refreshPreview()};
+    });
+    renderSampleInfo();
+    refreshPreview();
+  }).catch(function(){});
+}
+// 选中一个样例就把它的压缩方式摆出来：几代、QP、GOP、分辨率、熵编码，
+// 以及"理论上在这个点上应该测出什么"。参数全部实测，来自 manifest 的 profiles。
+var ROLEPILL={suspect:'bad',reference:'ok',control:'idle',pixel:'warn'};
+function fmtBytes(n){return n>=1048576?(n/1048576).toFixed(2)+' MB':(n/1024).toFixed(0)+' KB'}
+
+function profileRow(which,name){
+  if(!name)return '';
+  var p=(SWEEP&&SWEEP.profiles)?SWEEP.profiles[name]:null;
+  if(!p)return '<tr><th>'+(which==='sus'?'待检':'参考')+'</th><td><span class="mono">'+
+    esc(name)+'</span> <span class="small">（无档案）</span></td></tr>';
+  var enc=(p.profile||'?')+' / '+(p.entropy?p.entropy.toUpperCase():'?');
+  var spec=[p.width+'×'+p.height,enc,p.frames+' 帧',p.idr+' 个 IDR',
+            p.gop_est?('GOP≈'+p.gop_est):null,fmtBytes(p.bytes)]
+           .filter(Boolean).join(' · ');
+  var qp=(p.qp1!=null&&p.qp2!=null)?('QP1='+p.qp1+' → QP2='+p.qp2):null;
+  var h='<tr><th style="width:130px">'+(which==='sus'?'待检样例':'参考样例')+'</th><td>'+
+    '<div><span class="mono">'+esc(name)+'</span> '+
+    '<span class="pill '+(ROLEPILL[p.role]||'idle')+'">'+esc(p.tag||p.role||'')+'</span></div>'+
+    '<div class="small mono" style="margin-top:3px">'+esc(spec)+(qp?'<br>'+esc(qp):'')+'</div>'+
+    (p.plain?'<div class="small" style="margin-top:4px">'+p.plain+'</div>':'')+
+    (p.expect?'<div class="small" style="margin-top:3px"><b>理论上预期：</b>'+esc(p.expect)+'</div>':'')+
+    (p.caveat?'<div class="small" style="margin-top:3px;color:var(--dim)"><b>注意：</b>'+esc(p.caveat)+'</div>':'')+
+    '</td></tr>';
+  return h;
+}
+
+function renderSampleInfo(){
+  var box=$('sample-info');if(!box)return;
+  if(document.querySelector('input[name=src]:checked').value!=='sample'){box.innerHTML='';return}
+  var s=$('s-sus').value,r=$('s-ref').value;
+  if(!s&&!r){box.innerHTML='';return}
+  var h='<table style="margin-top:8px">'+profileRow('sus',s)+profileRow('ref',r)+'</table>';
+  if(s&&!r){
+    h+='<div class="small" style="margin-top:4px">未选参考 ⇒ 适用性门控<b>无法测量</b>，'+
+       '结论按"适用性未知"出具。若要做鉴定级判断，请选一个<b>同内容、同起点</b>的单压参考'+
+       '（与待检同内容、同起点的单压版本）。</div>';
+  }
+  box.innerHTML=h;
+}
+// 判决书式的结论对非专业读者等于没说，所以每种判决都附一句人话 + 下一步该做什么。
+function plainOf(d){
+  var dec=d.decision||{},v=dec.verdict||'',sc=dec.scorecard,g=d.gate,ra=d.r_axis;
+  var head,body,next;
+  if(g&&g.measured&&g.pairing==='mismatch'){
+    head='参考不匹配，结论按"适用性未知"出具。';
+  }
+  if(v==='DOUBLE_COMPRESSION_INDICATED'){
+    body='找到了重压缩的证据'+(sc&&sc.score!=null?('，证据强度 <b>'+sc.score+'/100</b>（'+esc(sc.grade||'')+'）'):'')+
+      '。意思是：几条互不重叠的轴上出现了同向的异常。'+
+      '<b>这是"有证据"，不是法律认定</b> —— 它不排除存在本工具没建模的处理方式。';
+    next=sc&&sc.score!=null&&sc.score>=70
+      ? '证据较强。若要做正式鉴定，补一份同内容同起点的单压参考再跑一遍，让门控真正测到。'
+      : '证据中等偏弱。建议补参考、或换更长的片段（≥60 个 VCL 帧）再看。';
+  }else if(v==='NO_EVIDENCE'){
+    body='三条轴都没测出重压缩痕迹。';
+    if(ra&&(ra.regime==='idempotent'||ra.regime==='undetectable')){
+      body+='<b>但这里要特别小心</b>：已知的操作点 '+(ra.qp1!=null?('QP1='+ra.qp1+' → QP2='+ra.qp2):'')+
+        ' 正好落在'+(ra.regime==='idempotent'?'幂等点（两代 QP 相同）':'周期-6 不可检测点（QP 相差 6 的倍数）')+
+        '上。在这个点上<b>码流域按理论就测不出来</b>，所以"无证据"完全符合预期，'+
+        '<b>不能读成"证明只压过一次"</b>。';
+      next='要区分这两种情况，得换一条不看量化系数的轴 —— 像素域探针在这个点上仍可能检出。';
+    }else{
+      body+='这可能是它真的只压过一次，也可能是压了两次但参数组合正好落在理论盲区。'+
+            '这两种情况本工具<b>无法仅凭这一次结果区分</b>。';
+      next='如果知道两次压缩的 QP，填进上方"这个操作点在理论上可检吗"先看区制；'+
+           '再考虑接像素域引擎跑同一条素材。';
+    }
+  }else if(v==='NOT_APPLICABLE'){
+    body='这段素材不满足方法成立的前提'+(g&&g.d_single!=null?
+        ('（单压基线 D_single = '+Number(g.d_single).toExponential(2)+
+         (g.threshold!=null?('，阈值 '+g.threshold):'')+'）'):'')+
+      '。<b>这时不给分数</b> —— 硬凑一个数是没有依据的。';
+    next='换分辨率更低或单压基线更接近理论模型的素材；或直接看像素域轴的结果（若有）。';
+  }else{
+    body='判决为 <span class="mono">'+esc(v)+'</span>。';
+    next='';
+  }
+  var h='<div class="kv" style="margin-top:10px"><b>这句话是什么意思</b><span>'+body+'</span></div>';
+  if(head)h+='<div class="kv"><b>前提</b><span>'+esc(head)+'</span></div>';
+  if(next)h+='<div class="kv"><b>接下来可以做什么</b><span>'+esc(next)+'</span></div>';
+  return h;
+}
+
+function loadRde(){
+  return api(BASE+'v1/rde').then(function(r){
+    var el=$('s-rde');if(!el)return;
+    if(r.status!==200||!r.json){pill(el,'未连接','idle');return}
+    var h=r.json;
+    if(!h.available){pill(el,'未连接','idle');el.title=h.reason||'';return}
+    pill(el,'v'+(h.version||'?')+' 已接入','ok');
+    el.title='base='+h.base+' · tau='+h.tau_deploy+' · r*='+h.r_star;
+  }).catch(function(){pill($('s-rde'),'未连接','idle')});
+}
+var OBJURL={sus:null,ref:null};
+function setVidUrl(which,url,name){
+  var v=$('vid-'+which),meta=$('m-'+which);
+  if(OBJURL[which]){try{URL.revokeObjectURL(OBJURL[which])}catch(e){}OBJURL[which]=null}
+  if(!url){v.removeAttribute('src');v.load&&v.load();meta.textContent='—';return}
+  v.src=url;meta.textContent=name||'';
+}
+function setVidFile(which,file){
+  if(!file){setVidUrl(which,null);return}
+  if(/\.(264|h264)$/i.test(file.name)){
+    setVidUrl(which,null);
+    $('m-'+which).textContent=file.name+' · 原始码流，浏览器无法播放（分析照常）';
+    return;
+  }
+  var u=URL.createObjectURL(file);OBJURL[which]=u;
+  setVidUrl(which,u,file.name+' · '+(file.size/1048576).toFixed(2)+' MB');
+}
+function refreshPreview(){
+  var mode=document.querySelector('input[name=src]:checked').value;
+  if(mode==='upload'){
+    setVidFile('sus',$('f-sus').files[0]);
+    setVidFile('ref',$('f-ref').files[0]);
+  }else{
+    var s=$('s-sus').value,r=$('s-ref').value;
+    setVidUrl('sus',s?BASE+'samples/'+encodeURIComponent(s):null,s||'');
+    setVidUrl('ref',r?BASE+'samples/'+encodeURIComponent(r):null,r||'');
+  }
+}
+function bindVideoMeta(){
+  ['sus','ref'].forEach(function(w){
+    var v=$('vid-'+w);
+    v.addEventListener('loadedmetadata',function(){
+      var m=$('m-'+w),base=(w==='sus'?'待检':'参考');
+      var t=(v.duration&&isFinite(v.duration))?v.duration.toFixed(1)+' s':'时长未知';
+      m.textContent=(m.textContent&&m.textContent!=='—'?m.textContent+' · ':'')+
+        v.videoWidth+'×'+v.videoHeight+' · '+t;
+    });
+    v.addEventListener('error',function(){
+      if(v.src)$('m-'+w).textContent='无法播放（格式不受浏览器支持，分析照常）';
+    });
+  });
+}
+function bindSync(){
+  var a=$('vid-sus'),b=$('vid-ref');
+  function mirror(ev){
+    return function(){
+      if(!$('sync-play').checked)return;
+      try{
+        if(ev==='play')b.play();
+        else if(ev==='pause')b.pause();
+        else if(Math.abs(b.currentTime-a.currentTime)>0.2)b.currentTime=a.currentTime;
+      }catch(e){}
+    };
+  }
+  ['play','pause','seeked'].forEach(function(ev){
+    a.addEventListener(ev,mirror(ev));
+    b.addEventListener(ev,mirror(ev));
+  });
+}
+function grab(which){
+  var v=$('vid-'+which);
+  if(!v.videoWidth){showWarn('请先加载并播放视频，再抓帧。');return}
+  var c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  var url=c.toDataURL('image/png');
+  var f=document.createElement('figure');
+  f.innerHTML='<img src="'+url+'" alt="frame">'+
+    '<figcaption>'+(which==='sus'?'待检':'参考')+' @ '+v.currentTime.toFixed(2)+' s · '+
+    v.videoWidth+'×'+v.videoHeight+'</figcaption>'+
+    '<div class="small" style="text-align:center;margin-top:4px">'+
+    '<a href="'+url+'" download="vrfs_frame_'+which+'_'+v.currentTime.toFixed(2)+'.png">下载 PNG</a></div>';
+  var box=$('grabs');box.insertBefore(f,box.firstChild);
+}
+
+function onSrc(){
+  var v=document.querySelector('input[name=src]:checked').value;
+  $('box-upload').style.display=(v==='upload')?'':'none';
+  $('box-sample').style.display=(v==='sample')?'':'none';
+  renderSampleInfo();
+  refreshPreview();
+}
+
+function queryR(){
+  var q1=$('rq1').value,q2=$('rq2').value;
+  api(BASE+'v1/r_axis?qp1='+encodeURIComponent(q1)+'&qp2='+encodeURIComponent(q2)).then(function(r){
+    if(r.status!==200){$('r-out').innerHTML='<span style="color:var(--bad)">查询失败</span>';return}
+    var a=r.json,map={detectable:'可检',idempotent:'幂等湮灭',undetectable:'周期-6 不可检测',erasure:'擦除'};
+    var cls=a.regime==='detectable'?'ok':(a.regime==='erasure'?'warn':'bad');
+    $('r-out').innerHTML=
+      '<div><span class="pill '+cls+'">'+(map[a.regime]||a.regime)+'</span> '+
+      '<span class="mono">r='+a.r.toFixed(4)+'  1/r='+a.inv_r.toFixed(4)+
+      '  Qstep '+a.Qstep1+' → '+a.Qstep2+'</span></div>'+
+      '<div class="small" style="margin-top:4px">'+esc(a.why)+'</div>'+
+      '<div class="small">QP1='+q1+' 的周期-6 家族：'+a.period6_family_from_qp1.join(', ')+'</div>';
+  });
+}
+var SWEEP=null;
+var RMAP={detectable:'可检',idempotent:'幂等湮灭',undetectable:'周期-6 不可检测',erasure:'擦除'};
+function rcls(g){return g==='detectable'?'ok':(g==='erasure'?'warn':'bad')}
+
+function fmtScore(v){
+  if(v==null)return '<span class="small">n/a</span>';
+  if(v>=0.1)return '<b class="mono">'+v.toFixed(4)+'</b>';
+  return '<span class="mono">'+v.toExponential(2)+'</span>';
+}
+
+function loadSweep(){
+  var note=$('sweep-note');
+  return api(BASE+'samples/manifest.json').then(function(r){
+    if(r.status!==200||!r.json){note.textContent='未内置扫描语料，请用下方上传模式。';return}
+    SWEEP=r.json;
+    var t=$('sweep-tbl'),h='<tr><th>操作点</th><th>理论预测（扫描前写死）</th>'+
+      '<th>实测 DQ 梳齿</th><th>GOP max-T p</th><th>像素域 RDE</th>'+
+      '<th>证据强度评分</th><th>判决</th><th></th></tr>';
+    SWEEP.cases.forEach(function(c){
+      var o=c.observed||{},th=c.theory||{};
+      var v=(o.verdict||'').replace('DOUBLE_COMPRESSION_INDICATED','检出')
+             .replace('NO_EVIDENCE','无证据').replace('NOT_APPLICABLE','不适用');
+      h+='<tr>'+
+        '<td><b>'+esc(c.label)+'</b><br><span class="mono">QP2='+c.qp2+'</span>'+
+          '<br><span class="small">'+esc(c.desc)+'</span></td>'+
+        '<td><span class="pill '+rcls(th.regime)+'">'+(RMAP[th.regime]||th.regime)+'</span>'+
+          '<br><span class="mono">r='+(th.r!=null?th.r.toFixed(4):'?')+
+          '  1/r='+(th.inv_r!=null?th.inv_r.toFixed(4):'?')+'</span></td>'+
+        '<td>'+fmtScore(o.dq_score)+'</td>'+
+        '<td class="mono">'+(o.gop_p_maxt!=null?o.gop_p_maxt.toFixed(3):'—')+'</td>'+
+        '<td>'+(o.rde_state?('<span class="mono">'+esc(o.rde_state)+'</span>'+
+            (o.rde_confidence!=null?'<br><span class="small">conf '+
+              o.rde_confidence+'</span>':'')):'<span class="small">—</span>')+'</td>'+
+        '<td>'+(o.score!=null?('<b class="mono" style="font-size:15px">'+
+              o.score+'</b><br><span class="small">'+esc(o.grade||'')+'</span>'+
+              (o.coverage!=null?'<br><span class="small">覆盖度 '+
+                o.coverage.toFixed(2)+'</span>':''))
+            :'<span class="small">不适用</span>')+'</td>'+
+        '<td>'+esc(v)+'</td>'+
+        '<td><button class="ghost" style="padding:5px 10px" onclick="runCase(\''+c.id+'\')">实测</button></td>'+
+        '</tr>';
+    });
+    t.innerHTML=h;t.style.display='';
+    renderSampleInfo();   // profiles 同在 manifest 里，此时才可用
+    note.innerHTML='固定 QP1=23 扫 QP2，共 '+SWEEP.cases.length+' 个操作点 · '+
+      esc(SWEEP.content)+' · 门控阈值 D_single &lt; '+SWEEP.gate_threshold_D_single+
+      ' · DQ 命中阈值 '+SWEEP.dq_hit_threshold+
+      '。每个格子都是<b>本机实测值</b>（含像素域 RDE 与合成评分），'+
+      '点「实测」可当场重跑一遍。';
+  }).catch(function(){note.textContent='未内置扫描语料，请用下方上传模式。'});
+}
+
+// 点「实测」：把该操作点填进表单并跑一次，等于让用户亲手复现表里的数
+function runCase(id){
+  if(!SWEEP)return;
+  var c=null;SWEEP.cases.forEach(function(x){if(x.id===id)c=x});
+  if(!c)return;
+  var r=document.querySelector('input[name=src][value=sample]');
+  if(r){r.checked=true;onSrc()}
+  $('s-sus').value=c.suspect;
+  $('s-ref').value=c.reference||'';
+  $('p-qp1').value=c.qp1;$('p-qp2').value=c.qp2;
+  renderSampleInfo();
+  run();
+  $('card-out').scrollIntoView({behavior:'smooth'});
+}
+
+function num(id){var v=$(id).value;return (v===''||v==null)?null:Number(v)}
+
+function run(){
+  showErr('');showWarn('');
+  var mode=document.querySelector('input[name=src]:checked').value;
+  var q1=num('p-qp1'),q2=num('p-qp2');
+  if((q1===null)!==(q2===null)){showWarn('QP1 与 QP2 要么都填，要么都留空。');return}
+  $('btn-run').disabled=true;$('spin').textContent='分析中（码流解析约 5–15 秒）…';
+  var p;
+  if(mode==='upload'){
+    var fs=$('f-sus').files[0];
+    if(!fs){showErr('请选择待检视频。');$('btn-run').disabled=false;$('spin').textContent='';return}
+    var fd=new FormData();fd.append('file',fs);
+    var fr=$('f-ref').files[0];if(fr)fd.append('reference',fr);
+    if(q1!==null){fd.append('qp1',q1);fd.append('qp2',q2)}
+    fd.append('gop2',$('p-gop2').value||15);fd.append('n_perm',$('p-perm').value||500);
+    fd.append('use_rde',$('p-rde').checked?'true':'false');
+    fd.append('with_hist','true');      // 要直方图才能画梳齿图
+    p=api(BASE+'v1/analyze',{method:'POST',body:fd});
+  }else{
+    var n=$('s-sus').value;if(!n){showErr('请选择待检样例。');$('btn-run').disabled=false;$('spin').textContent='';return}
+    var fd2=new FormData();fd2.append('name',n);
+    var rf=$('s-ref').value;if(rf)fd2.append('reference',rf);
+    if(q1!==null){fd2.append('qp1',q1);fd2.append('qp2',q2)}
+    fd2.append('gop2',$('p-gop2').value||15);fd2.append('n_perm',$('p-perm').value||500);
+    fd2.append('use_rde',$('p-rde').checked?'true':'false');
+    fd2.append('with_hist','true');     // 要直方图才能画梳齿图
+    p=api(BASE+'v1/analyze_sample',{method:'POST',body:fd2});
+  }
+  p.then(function(r){
+    $('btn-run').disabled=false;$('spin').textContent='';
+    if(r.status!==200){showErr('分析失败（HTTP '+r.status+'）：'+esc((r.json&&r.json.error)||r.text));return}
+    render(r.json);
+  }).catch(function(e){$('btn-run').disabled=false;$('spin').textContent='';showErr('请求失败：'+e)});
+}
+
+var VMAP={'DOUBLE_COMPRESSION_INDICATED':['检出双压缩','bad'],
+          'NO_EVIDENCE':['无证据','warn'],'NOT_APPLICABLE':['证书不适用','idle']};
+function sbar(v){
+  var cls=v>=70?'hi':(v>=40?'mid':'lo');
+  return '<div class="bar '+cls+'"><i style="width:'+v+'%"></i></div>';
+}
+var STAGNA={unavailable:'不可用',annihilated:'理论湮灭（不计分）',
+            undecidable:'该引擎不可判（不计分）'};
+function renderScore(sc){
+  var box=$('v-score');if(!box)return;
+  if(!sc){box.innerHTML='';return}
+  var s=sc.score;
+  var h='<div class="score">'+
+    '<div class="num'+(s==null?' none':'')+'">'+(s==null?'不适用':s)+'</div>'+
+    '<div class="meta"><div class="grade">'+esc(sc.grade||'')+'</div>'+
+    '<div class="small">证据覆盖度 '+(sc.coverage!=null?sc.coverage.toFixed(2):'—')+
+    ' · 阳性轴 '+esc((sc.positive_axes||[]).join(' / ')||'无')+'</div></div></div>';
+  h+='<table class="sitems"><tr><th style="width:210px">分项</th><th>强度</th>'+
+     '<th style="width:60px">权重</th></tr>';
+  (sc.items||[]).forEach(function(it){
+    var v=it.score;
+    var val=(it.status==='scored'&&v!=null)?('<b class="mono">'+v+'</b>'+sbar(v))
+      :('<span class="stag '+(it.status==='undecidable'?'und':'na')+'">'+
+        esc(STAGNA[it.status]||it.status)+'</span>');
+    h+='<tr><td>'+esc(it.label)+'<div class="small">'+esc(it.why||'')+'</div></td>'+
+       '<td>'+val+'</td><td class="mono">'+Number(it.weight).toFixed(2)+'</td></tr>';
+  });
+  h+='</table>';
+  (sc.notes||[]).forEach(function(n){
+    h+='<div class="small" style="margin-top:6px">· '+esc(n)+'</div>'});
+  h+='<details><summary>分数是怎么算出来的，以及它不是什么</summary>'+
+    '<div class="small" style="margin-top:6px">'+
+    '每个分项用<b>写死且公开</b>的映射把原始统计量压到 0–100：'+
+    'DQ 轴按实测空带（单压上界 3.24e-2、可检区下界 4.20e-1）做对数插值；'+
+    'GOP 轴按 max-T 置换 p 取 log10(1/p)，到 1e-3 封顶；'+
+    '像素域轴直接用 RDE 自己声明的置信度（诊断模式按 dip_z / τ 折算并封顶）。'+
+    '再按权重 0.30 / 0.30 / 0.30 合成，一致性占 0.10 是修正项。<br><br>'+
+    '三条硬规矩：① <b>门控关 ⇒ 不给分</b>；② 理论预期湮灭的操作点上 DQ 轴'+
+    '<b>退出计分</b>（那里的低分是预期结果，不是阴性证据）；'+
+    '③ 某台引擎说"我判不了"时它同样<b>退出计分</b>，不拿它的分辨率不足去稀释别人的强阳性。'+
+    '少一条轴会降低<b>证据覆盖度</b>，权重在可用轴上重新归一化并如实写出。<br><br>'+
+    '<b>它不是双压缩的后验概率，也不是似然比。</b>那两样需要先验与校准过的似然函数，'+
+    '本工具不提供，也不编造。分数只回答"这套证据有多强"。</div></details>';
+  box.innerHTML=h;
+}
+function fmtNum(v){return Math.abs(v)>=0.01?v.toFixed(2):v.toExponential(1)}
+
+function histChart(dq){
+  var head='<div class="chart"><div class="ct">AC |level| 直方图（DQ 轴的输入）</div>'+
+    '<div class="cs">单压应光滑单调递减；双压会在某些 level 上堆出梳齿。</div>';
+  if(!dq.available||!dq.hist||!dq.hist.length){
+    return head+'<div class="small">该轴不可用，读不到系数直方图'+
+      (dq.reason?'：'+esc(dq.reason):'')+'</div></div>';
+  }
+  var h=dq.hist.slice(0,24),tot=0,i;
+  h.forEach(function(v){tot+=v});
+  if(!tot)return head+'<div class="small">无有效系数</div></div>';
+  var p=h.map(function(v){return v/tot});
+  var n=23,mx=0;
+  for(i=0;i<n;i++)if(p[i]>mx)mx=p[i];
+  if(!mx)mx=1;
+  var W=440,H=180,L=40,R=10,T=12,B=28;
+  var pw=W-L-R,ph=H-T-B,gap=pw/n,bw=gap*0.74;
+  var s='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
+  for(var g=0;g<=4;g++){
+    var y=T+ph*g/4;
+    s+='<line x1="'+L+'" y1="'+y.toFixed(1)+'" x2="'+(W-R)+'" y2="'+y.toFixed(1)+
+       '" stroke="#eceff3"/>';
+    s+='<text x="'+(L-6)+'" y="'+(y+3).toFixed(1)+'" font-size="9" fill="#8a93a0" '+
+       'text-anchor="end">'+fmtNum(mx*(1-g/4))+'</text>';
+  }
+  for(i=0;i<n;i++){
+    var pv=p[i],bh=ph*pv/mx;
+    var x=L+i*gap+(gap-bw)/2,y=T+ph-bh;
+    var isPeak=(i>=1&&i<=22&&pv>(p[i-1]+p[i+1])/2);
+    var isViol=(i>=1&&i<=22&&pv>p[i-1]);
+    var col=isPeak?'#b3261e':(isViol?'#d98324':'#1f5fbf');
+    s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+
+       '" height="'+Math.max(bh,0.6).toFixed(1)+'" fill="'+col+'" rx="1"/>';
+  }
+  s+='<line x1="'+L+'" y1="'+(T+ph)+'" x2="'+(W-R)+'" y2="'+(T+ph)+'" stroke="#5b6572"/>';
+  [1,5,10,15,20,23].forEach(function(k){
+    var x=L+(k-1)*gap+gap/2;
+    s+='<text x="'+x.toFixed(1)+'" y="'+(H-10)+'" font-size="9" fill="#8a93a0" '+
+       'text-anchor="middle">'+k+'</text>';
+  });
+  s+='<text x="'+(L+pw/2)+'" y="'+(H-1)+'" font-size="9" fill="#8a93a0" '+
+     'text-anchor="middle">|level| k</text></svg>';
+  return head+s+
+    '<div class="legend"><i style="background:#1f5fbf"></i>常规格 '+
+    '<i style="background:#b3261e"></i>凸峰贡献（peak） '+
+    '<i style="background:#d98324"></i>单调违例（viol）'+
+    '<br>score = peak + viol = <span class="mono">'+dq.score+
+    '</span>，阈值 <span class="mono">0.10</span>'+
+    '<br>共 '+Number(dq.n_coeff).toLocaleString()+' 个非零 AC 系数，来自 '+
+    dq.n_idr+' 个 IDR 帧</div></div>';
+}
+
+function specChart(gp){
+  var head='<div class="chart"><div class="ct">GOP 周期扫描谱（GOP 轴的输出）</div>'+
+    '<div class="cs">在 '+gp.n_candidates+
+    ' 个候选周期上逐个算 Welch t；峰值周期就是第一代 GOP 的候选。</div>';
+  if(!gp.available||!gp.z_curve){
+    return head+'<div class="small">该轴不可用'+
+      (gp.reason?'：'+esc(gp.reason):'')+'</div></div>';
+  }
+  var keys=Object.keys(gp.z_curve).map(Number).sort(function(a,b){return a-b});
+  if(!keys.length)return head+'<div class="small">无候选周期</div></div>';
+  var zs=keys.map(function(k){return gp.z_curve[String(k)]});
+  var z95=null;
+  if(gp.null_max_sd&&gp.null_max_mean!=null&&gp.null_max_p95!=null)
+    z95=(gp.null_max_p95-gp.null_max_mean)/gp.null_max_sd;
+  var lo=Math.min(0,Math.min.apply(null,zs));
+  var hi=Math.max(2,Math.max.apply(null,zs),z95||0);
+  var pad=(hi-lo)*0.12;lo-=pad;hi+=pad;
+  var W=440,H=180,L=40,R=10,T=12,B=28;
+  var pw=W-L-R,ph=H-T-B,gap=pw/keys.length,bw=gap*0.7;
+  function yof(z){return T+ph*(hi-z)/(hi-lo)}
+  var s='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
+  for(var g=0;g<=4;g++){
+    var z=lo+(hi-lo)*g/4,y=yof(z);
+    s+='<line x1="'+L+'" y1="'+y.toFixed(1)+'" x2="'+(W-R)+'" y2="'+y.toFixed(1)+
+       '" stroke="#eceff3"/>';
+    s+='<text x="'+(L-6)+'" y="'+(y+3).toFixed(1)+'" font-size="9" fill="#8a93a0" '+
+       'text-anchor="end">'+z.toFixed(1)+'</text>';
+  }
+  keys.forEach(function(k,i){
+    var z=zs[i],y0=yof(0),y1=yof(z);
+    var top=Math.min(y0,y1),hh=Math.max(Math.abs(y1-y0),0.6);
+    var col=(k===gp.blind_p)?'#b3261e':'#1f5fbf';
+    s+='<rect x="'+(L+i*gap+(gap-bw)/2).toFixed(1)+'" y="'+top.toFixed(1)+
+       '" width="'+bw.toFixed(1)+'" height="'+hh.toFixed(1)+'" fill="'+col+'" rx="1"/>';
+  });
+  var yz=yof(0);
+  s+='<line x1="'+L+'" y1="'+yz.toFixed(1)+'" x2="'+(W-R)+'" y2="'+yz.toFixed(1)+
+     '" stroke="#5b6572"/>';
+  if(z95!=null){
+    var y95=yof(z95);
+    s+='<line x1="'+L+'" y1="'+y95.toFixed(1)+'" x2="'+(W-R)+'" y2="'+y95.toFixed(1)+
+       '" stroke="#a86400" stroke-dasharray="4 3"/>';
+    s+='<text x="'+(W-R)+'" y="'+(y95-4).toFixed(1)+'" font-size="9" fill="#a86400" '+
+       'text-anchor="end">零分布 95 分位</text>';
+  }
+  keys.forEach(function(k,i){
+    if(k%2===0||k===gp.blind_p){
+      s+='<text x="'+(L+i*gap+gap/2).toFixed(1)+'" y="'+(H-10)+
+         '" font-size="9" fill="#8a93a0" text-anchor="middle">'+k+'</text>';
+    }
+  });
+  s+='<text x="'+(L+pw/2)+'" y="'+(H-1)+'" font-size="9" fill="#8a93a0" '+
+     'text-anchor="middle">候选周期 p</text></svg>';
+  return head+s+
+    '<div class="legend"><i style="background:#1f5fbf"></i>各周期强度 z '+
+    '<i style="background:#b3261e"></i>盲搜峰值 p='+gp.blind_p+
+    '<br>纵轴是相对<b>置换零分布</b>的 z：把帧序列随机打乱 '+
+    gp.n_perm+' 次、每次内部同样取 max，得到"纯噪声能扫出多高的峰"。'+
+    '<br>判决用的是 <b>max-T 置换 p = '+(gp.p_perm!=null?gp.p_perm.toFixed(4):'n/a')+
+    '</b> ⇒ '+(gp.significant?'<b style="color:var(--ok)">显著</b>':'不显著')+
+    '（不是拿 z 和 1.96 比，那个没有族错误率保证）</div></div>';
+}
+
+function regimeZh(ra){
+  if(ra.regime==='idempotent')
+    return 'r = 1（QP₁ = QP₂）：再量化<b>幂等</b>，两代量化网格完全重合 ⇒ DQ 轴被湮灭';
+  if(ra.regime==='undetectable')
+    return '1/r = '+ra.L+' 是整数：第一代网格<b>整格</b>落在第二代网格上'+
+           '（周期-6 家族，QP₂ = QP₁ + 6k）⇒ DQ 轴被湮灭';
+  if(ra.regime==='detectable')
+    return 'r = '+ra.r.toFixed(4)+' &gt; 1：第二代更精细 ⇒ 梳齿可观测';
+  return 'r = '+ra.r.toFixed(4)+' &lt; 1：第二代更粗糙 ⇒ 梳齿被大面积擦除';
+}
+
+function theoryCheck(dq,gp,ra){
+  if(!ra){
+    return '<div class="xcheck"><b>理论 ⇒ 实测 对照</b>'+
+      '<div class="small">填上 QP1 / QP2 才能做这项对照：r 轴先算出这个操作点'+
+      '<b>在理论上测不测得出来</b>，再拿实测去核。不填的话只能给实测值，'+
+      '而"无证据"将无法被解释。</div></div>';
+  }
+  var pred,okh,obs;
+  if(ra.regime==='detectable'){
+    pred='梳齿应可观测：score ≥ 4.20e-1';
+  }else if(ra.regime==='idempotent'||ra.regime==='undetectable'){
+    pred='DQ 轴应被湮灭：score 落回单压带（&lt; 3.24e-2）';
+  }else{
+    pred='梳齿被大面积擦除：score 偏低';
+  }
+  obs=dq.available?('score = <span class="mono">'+dq.score+'</span>')
+                  :'不可用'+(dq.reason?'（'+esc(dq.reason)+'）':'');
+  okh='—';
+  if(dq.available){
+    if(ra.regime==='detectable')
+      okh=(dq.score>=0.42)?'<b style="color:var(--ok)">一致</b>'
+                          :'<b style="color:var(--warn)">低于预期</b>';
+    else if(ra.regime==='idempotent'||ra.regime==='undetectable')
+      okh=(dq.score<3.24e-2)?'<b style="color:var(--ok)">一致（理论预期命中）</b>'
+                            :'<b style="color:var(--warn)">高于预期</b>';
+    else okh='<span class="small">擦除区只作描述，不作判定</span>';
+  }
+  var gobs=gp.available
+    ? ('p = '+(gp.p_perm!=null?gp.p_perm.toFixed(4):'n/a')+' ⇒ '+
+       (gp.significant?'显著':'不显著')+
+       '（最强周期 '+gp.blind_p+'）')
+    : '不可用'+(gp.reason?'（'+esc(gp.reason)+'）':'');
+  var h='<div class="xcheck"><b>理论 ⇒ 实测 对照</b>'+
+    '<div class="small">r 轴给出的是<b>事前预测</b>，下面的实测用来核它。'+
+    '预测被命中时，低分才能被解释为"理论上就该测不出来"，而不是"漏检"。</div>'+
+    '<table><tr><th style="width:110px">轴</th><th>理论预测（由 QP₁/QP₂ 算出）</th>'+
+    '<th style="width:30%">实测</th><th style="width:130px">对照</th></tr>'+
+    '<tr><td>DQ 梳齿轴</td><td>'+pred+'<div class="small">区制 <b>'+
+    esc(ra.regime)+'</b> —— '+regimeZh(ra)+'</div></td><td>'+obs+'</td><td>'+okh+'</td></tr>'+
+    '<tr><td>GOP 相位轴</td><td>不受 r 区制约束 —— 它读帧大小，不读量化网格，'+
+    '周期-6 零点对它<b>没有</b>约束力'+
+    '<div class="small">它自己的静默条件是 GOP₂ = GOP₁（没有相位差可测），'+
+    '与 QP 无关</div></td><td>'+gobs+'</td><td>'+
+    (gp.available?'<span class="small">独立轴，不与 DQ 互证也不互斥</span>':'—')+'</td></tr>'+
+    '</table></div>';
+  return h;
+}
+
+function renderAlgo(d){
+  var box=$('v-algo');if(!box)return;
+  var h='<div style="margin-top:14px"><b style="font-size:13px">算法的中间产物'+
+    '</b><div class="small">下面两张图不是装饰，就是左侧算法卡里那些公式跑出来的东西：'+
+    '左边是 DQ 轴实际读到的直方图（红柱 = 被判为"凸峰"的格，橙柱 = "单调违例"的格，'+
+    '两者之和就是 score）；右边是 GOP 轴在候选周期上扫出来的谱。'+
+    '算法的详细步骤见页面上方<b>算法卡</b>。</div></div>';
+  h+='<div class="charts">'+histChart(d.dq||{})+specChart(d.gop||{})+'</div>';
+  h+=theoryCheck(d.dq||{},d.gop||{},d.r_axis);
+  box.innerHTML=h;
+}
+
+function render(d){
+  LAST=d;
+  var dec=d.decision||{},v=dec.verdict||'UNKNOWN';
+  var m=VMAP[v]||[v,'idle'];
+  $('card-out').style.display='';
+  $('v-badge').innerHTML='<span class="pill '+m[1]+'">'+esc(m[0])+'</span>'+
+    (dec.confidence&&dec.confidence!=='n/a'?' <span class="small">置信度 '+esc(dec.confidence)+'</span>':'');
+  $('v-text').textContent='';
+  $('v-meta').innerHTML='文件 <span class="mono">'+esc(d.file||'')+'</span> · '+
+    '码流 '+(d.stream&&d.stream.bytes?d.stream.bytes.toLocaleString():'?')+' 字节 / '+
+    (d.stream&&d.stream.n_vcl!=null?d.stream.n_vcl:'?')+' 个 VCL NAL · '+
+    '耗时 '+(d.elapsed_s!=null?d.elapsed_s+' s':'?');
+
+  // 门控
+  var g=d.gate,gh='';
+  if(!g){gh='<div class="kv"><b>适用性门控</b><span class="pill warn">未测</span> 未提供单压参考 —— 判决按“适用性未知”出具。</div>';
+  }else if(!g.measured){gh='<div class="kv"><b>适用性门控</b><span class="pill warn">未测</span> '+esc(g.note)+'</div>';
+  }else if(g.pairing==='mismatch'){gh='<div class="kv"><b>适用性门控</b><span class="pill warn">参考不匹配</span> D_single = <span class="mono">'+
+      g.d_single.toExponential(2)+'</span> 测在 <span class="mono">'+esc(g.reference||'')+'</span> 上，那是另一段素材，'+
+      '这个数不能搬到待检上 —— 适用性按<b>未知</b>处理。</div>';
+  }else if(g.applies){gh='<div class="kv"><b>适用性门控</b><span class="pill ok">开启</span> D_single = <span class="mono">'+
+      g.d_single.toExponential(2)+'</span> &lt; '+g.threshold+'</div>';
+  }else{gh='<div class="kv"><b>适用性门控</b><span class="pill bad">关闭</span> D_single = <span class="mono">'+
+      g.d_single.toExponential(2)+'</span> ≥ '+g.threshold+' —— 不出具分数。</div>';}
+
+  // 参考配对检查
+  var pr=d.pairing,ph='';
+  if(pr){
+    var pill = pr.status==='match' ? '<span class="pill ok">同源</span>'
+             : pr.status==='mismatch' ? '<span class="pill bad">非同源</span>'
+             : '<span class="pill warn">无法判断</span>';
+    ph='<div class="kv"><b>参考配对</b>'+pill+
+       ' 与 <span class="mono">'+esc(pr.reference||'')+'</span> 的帧大小序列相关系数 ρ = <span class="mono">'+
+       (pr.rho!=null?pr.rho:'—')+'</span>'+
+       (pr.status==='mismatch'?'<br><span class="small">'+esc(pr.note)+'。像素域配对模式已停用（退回诊断级），'+'码流两轴不受影响 —— 它们本来就不读参考。</span>':'')+
+       '</div>';
+  }
+  $('v-gate').innerHTML=gh+ph;
+
+  // 双轴
+  var dq=d.dq||{},gp=d.gop||{},rows='';
+  rows+='<tr><th>DQ 梳齿轴（系数域）</th><td>'+(dq.available?
+      ('score <span class="mono">'+dq.score+'</span> （凸峰 '+dq.peak+' + 违例 '+dq.viol+'）<br>'+
+       '<span class="small">'+dq.n_coeff.toLocaleString()+' 个非零 AC 系数 / '+dq.n_idr+
+       ' 个 IDR · 熵编码 '+esc(dq.entropy)+' · 锥距 '+
+       (dq.d_cone!=null?dq.d_cone.toExponential(2):'n/a')+'</span>')
+      :('<span class="pill idle">不可用</span> <span class="small">'+esc(dq.reason||'')+'</span>'))+'</td></tr>';
+  rows+='<tr><th>GOP 相位轴（帧大小域）</th><td>'+(gp.available?
+      ('最强周期 <span class="mono">p='+gp.blind_p+'</span> （相位 '+gp.blind_phase+
+       '） 强度 '+gp.blind_score+'，z='+gp.blind_z+
+       '<br><span class="small">在 '+gp.n_candidates+' 个候选周期上取最大值 · '+
+       '<b>max-T 置换 p='+(gp.p_perm!=null?gp.p_perm.toFixed(4):'n/a')+'</b>（'+
+       gp.n_perm+' 次置换，零分布 max 的均值 '+
+       (gp.null_max_mean!=null?gp.null_max_mean:'n/a')+' / 95 分位 '+
+       (gp.null_max_p95!=null?gp.null_max_p95:'n/a')+'） ⇒ '+
+       (gp.significant?'<b style="color:var(--ok)">显著</b>':'不显著')+'</span>'+
+       '<br><span class="small">零分布在每次置换内部同样取 max，族错误率由此天然控制，'+
+       '无需 Bonferroni，也无需正态近似。</span>')
+      :('<span class="pill idle">不可用</span> <span class="small">'+esc(gp.reason||'')+'</span>'))+'</td></tr>';
+
+  // 第三轴：像素域 RDE
+  var rd=d.rde||{};
+  var rcls2=rd.state==='DETECTED'?'bad':(rd.state==='UNDECIDABLE'?'warn':'idle');
+  rows+='<tr><th>像素域探针轴（RDE）</th><td>'+(rd.available?
+      ('<span class="pill '+rcls2+'">'+esc(rd.state_zh||rd.state)+'</span> '+
+       '<span class="small">引擎 v'+esc(rd.engine_version||'?')+' · 模式 '+
+       esc(rd.mode||'?')+' · 置信度 '+esc(rd.confidence)+
+       ' · 主统计量 '+esc(rd.primary_name||rd.primary_key||'—')+
+       (rd.n?'（n='+rd.n+'）':'')+' · 耗时 '+(rd.elapsed_s!=null?rd.elapsed_s+' s':'?')+'</span>'+
+       (rd.dip_z!=null?('<br><span class="small">诊断指数 dip_z = '+
+          Number(rd.dip_z).toFixed(3)+' vs 筛查线 τ = '+
+          (rd.threshold_used!=null?Number(rd.threshold_used).toFixed(3):'?')+
+          '（未越线 ⇒ 不构成鉴定结论）</span>'):'')+
+       (rd.note?('<br><span class="small">'+esc(rd.note)+'</span>'):''))
+      :('<span class="pill idle">未接入</span> <span class="small">'+
+        esc(rd.reason||'')+'</span>'))+'</td></tr>';
+  $('v-axes').innerHTML='<table>'+rows+'</table>';
+  renderAlgo(d);
+
+  renderScore(dec.scorecard);
+
+  // r 轴
+  var ra=d.r_axis;
+  $('v-r').innerHTML=ra?('<div class="kv"><b>操作点区制</b>'+
+    '<span class="mono">QP1='+ra.qp1+' → QP2='+ra.qp2+'，r='+ra.r.toFixed(4)+
+    '，1/r='+ra.inv_r.toFixed(4)+'</span> <span class="pill '+
+    (ra.regime==='detectable'?'ok':(ra.regime==='erasure'?'warn':'bad'))+'">'+esc(ra.regime)+'</span></div>'+
+    '<div class="small">'+esc(ra.why)+'</div>'):'';
+
+  var li='';(dec.reasons||[]).forEach(function(t){li+='<li>'+esc(t)+'</li>'});
+  $('v-reasons').innerHTML=li;
+  var pv=$('v-plain');if(pv)pv.innerHTML=plainOf(d);
+  $('card-out').scrollIntoView({behavior:'smooth'});
+}
+
+function dl(){
+  if(!LAST)return;
+  var b=new Blob([JSON.stringify(LAST,null,1)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download='vrfs_'+(LAST.file||'result')+'.json';a.click();
+}
+
+window.addEventListener('load',function(){
+  loadHealth();loadRde();loadSamples();queryR();onSrc();loadSweep();
+  bindVideoMeta();bindSync();
+  ['f-sus','f-ref'].forEach(function(id){
+    var el=$(id);if(el)el.addEventListener('change',refreshPreview);
+  });
+  ['s-sus','s-ref'].forEach(function(id){
+    var el=$(id);if(el)el.addEventListener('change',refreshPreview);
+  });
+});
+window.onerror=function(m){showErr('页面脚本错误：'+m)};
+</script>
+</body>
+</html>
