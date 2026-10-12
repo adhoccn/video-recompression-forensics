@@ -1,5 +1,9 @@
 # Video Recompression Forensics
 
+<!-- Zenodo badge: replace XXXXXXX below with the concept DOI, then uncomment.
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
+-->
+
 Detect double compression in H.264 video from three independent evidence axes,
 with an applicability gate and a 0-100 evidence-strength score.
 
@@ -106,6 +110,10 @@ export PYTHONPATH=/path/to/py-h264-decoder
 
 Without them the DQ axis reports `unavailable` and the remaining axes still
 produce a verdict with reduced reported coverage.
+
+## Cite
+
+See `CITATION.cff`, or use the DOI badge at the top once a Zenodo DOI is minted.
 
 ## License
 

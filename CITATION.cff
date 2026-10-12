@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "VRFS: Video Recompression Forensics Suite"
+abstract: >-
+  VRFS detects double compression in H.264 video from three independent
+  evidence axes: the quantization-step comb in the AC coefficient histogram,
+  the phase of the frame-size series, and the distortion residual in the pixel
+  domain. An applicability gate runs before any verdict and the result is
+  reported as a 0-100 evidence-strength score together with three verdicts,
+  including a distinct not-applicable outcome.
+version: 1.0.0
+date-released: "2026-10-12"
+license: MIT
+type: software
+repository-code: "https://github.com/adhoccn/video-recompression-forensics"
+url: "https://github.com/adhoccn/video-recompression-forensics"
+keywords:
+  - video forensics
+  - double compression
+  - H.264
+  - multimedia forensics
+  - completely monotone
+  - quantization step
+  - GOP structure
+authors:
+  - name: "VRFS Contributors"
+# Zenodo reads this file when minting the DOI. Before minting, replace the
+# author entity above with the real author list (add orcid / affiliation) and
+# uncomment the identifier below with the DOI Zenodo assigns.
+# identifiers:
+#   - type: doi
+#     value: "10.5281/zenodo.XXXXXXX"
+#     description: "Concept DOI: always resolves to the latest release."
