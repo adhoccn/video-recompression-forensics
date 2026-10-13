@@ -1,8 +1,6 @@
 # Video Recompression Forensics
 
-<!-- Zenodo badge: replace XXXXXXX below with the concept DOI, then uncomment.
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
--->
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23338056.svg)](https://doi.org/10.5281/zenodo.23338056)
 
 Detect double compression in H.264 video from three independent evidence axes,
 with an applicability gate and a 0-100 evidence-strength score.

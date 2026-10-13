@@ -24,10 +24,12 @@ keywords:
   - GOP structure
 authors:
   - name: "VRFS Contributors"
-# Zenodo reads this file when minting the DOI. Before minting, replace the
-# author entity above with the real author list (add orcid / affiliation) and
-# uncomment the identifier below with the DOI Zenodo assigns.
-# identifiers:
-#   - type: doi
-#     value: "10.5281/zenodo.XXXXXXX"
-#     description: "Concept DOI: always resolves to the latest release."
+# Zenodo reads this file when minting the DOI. Before camera-ready, replace
+# the author entity above with the real author list (add orcid / affiliation).
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.23338056"
+    description: "Concept DOI: always resolves to the latest release."
+  - type: doi
+    value: "10.5281/zenodo.23338063"
+    description: "Version DOI: this release (v1.0.0)."
